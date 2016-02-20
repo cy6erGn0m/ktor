@@ -52,6 +52,7 @@ fun parseRangesSpecifier(rangeSpec: String): RangesSpecifier? {
     }
 }
 
+@Deprecated("")
 fun ApplicationCall.handleRangeRequest(version: HasVersion, length: Long, mergeToSingleRange: Boolean = false, block: (List<LongRange>?) -> ApplicationCallResult): ApplicationCallResult {
     return withIfRange(version) { range ->
         response.headers.append(HttpHeaders.AcceptRanges, RangeUnits.Bytes.unitToken)

@@ -6,6 +6,7 @@ import org.jetbrains.ktor.routing.*
 import java.io.*
 import java.net.*
 import java.nio.file.*
+import java.util.jar.*
 
 class LocalFileContent(val file: File, override val contentType: ContentType = defaultContentType(file.extension)) : HasContentType, HasContentLength, StreamContentProvider, HasLastModified {
 
@@ -22,8 +23,9 @@ class LocalFileContent(val file: File, override val contentType: ContentType = d
     override fun stream() = file.inputStream()
 }
 
-class ResourceFileContent(val zipFile: File, val resourcePath: String, val classLoader: ClassLoader, override val contentType: ContentType = defaultContentType(resourcePath.extension())) : HasContentType, StreamContentProvider, HasLastModified {
+class ResourceFileContent(val zipFile: File, val resourcePath: String, val classLoader: ClassLoader, override val contentType: ContentType = defaultContentType(resourcePath.extension())) : HasContentType, StreamContentProvider, HasLastModified, HasContentLength {
     private val normalized = Paths.get(resourcePath).normalize().toString().replace(File.separatorChar, '/')
+    private val jarEntry by lazy { JarFile(zipFile).getJarEntry(resourcePath) ?: null }
 
     constructor(zipFilePath: Path, resourcePath: String, classLoader: ClassLoader, contentType: ContentType = defaultContentType(resourcePath.extension())) : this(zipFilePath.toFile(), resourcePath, classLoader, contentType)
 
@@ -33,6 +35,9 @@ class ResourceFileContent(val zipFile: File, val resourcePath: String, val class
 
     override val lastModified: Long
         get() = zipFile.lastModified()
+
+    override val contentLength: Long
+        get() = jarEntry?.size ?: 0L
 
     override fun stream() = classLoader.getResourceAsStream(normalized) ?: throw IOException("Resource $normalized not found")
 }

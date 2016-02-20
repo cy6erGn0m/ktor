@@ -1,8 +1,13 @@
 package org.jetbrains.ktor.http
 
 import org.jetbrains.ktor.application.*
+import org.jetbrains.ktor.util.*
 import java.io.*
 import java.util.zip.*
+
+object CompressionAttributes {
+    val preventCompression = AttributeKey<Boolean>("preventCompression")
+}
 
 data class CompressionOptions(var minSize: Long = 0L,
                               var compressStream: Boolean = true,

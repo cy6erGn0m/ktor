@@ -5,11 +5,9 @@ import org.jetbrains.ktor.content.*
 import org.jetbrains.ktor.http.*
 import org.jetbrains.ktor.interception.*
 import org.jetbrains.ktor.nio.*
-import org.jetbrains.ktor.util.*
 import java.io.*
 import java.nio.channels.*
 import java.nio.file.*
-import java.time.*
 
 abstract class BaseApplicationResponse(open val call: ApplicationCall) : ApplicationResponse {
     protected abstract val stream: Interceptable1<OutputStream.() -> Unit, Unit>
@@ -52,42 +50,17 @@ abstract class BaseApplicationResponse(open val call: ApplicationCall) : Applica
                     ApplicationCallResult.Handled
                 }
             }
+            is ChannelContentProvider -> {
+                sendAsyncChannel(value.channel())
+                ApplicationCallResult.Handled // or async?
+            }
             is LocalFileContent -> {
-                call.handleRangeRequest(value, value.file.length(), mergeToSingleRange = false) { ranges ->
-                    when {
-                        ranges == null -> {
-                            // TODO compression settings
-                            contentType(value.contentType)
-                            status(HttpStatusCode.OK)
-
-                            if (call.request.acceptEncodingItems().any { it.value == "gzip" }) {
-                                headers.append(HttpHeaders.ContentEncoding, "gzip")
-                                sendAsyncChannel(value.file.asyncReadOnlyFileChannel().deflated())
-                            } else {
-                                sendFile(value.file, 0L, value.file.length())
-                            }
-                        }
-                        ranges.size == 1 -> {
-                            contentType(value.contentType)
-                            status(HttpStatusCode.PartialContent)
-
-                            val single = ranges.single()
-                            contentRange(single, value.file.length(), RangeUnits.Bytes)
-                            sendFile(value.file, single.start, single.length)
-                        }
-                        else -> {
-                            val boundary = "ktor-boundary-" + nextNonce()
-                            status(HttpStatusCode.PartialContent)
-                            contentType(ContentType.MultiPart.ByteRanges.withParameter("boundary", boundary))
-
-                            sendAsyncChannel(ByteRangesChannel(ranges.map {
-                                ByteRangesChannel.FileWithRange(value.file, it)
-                            }, boundary, value.contentType.toString()))
-                        }
-                    }
-
-                    ApplicationCallResult.Handled
-                }
+                send(object : ChannelContentProvider, HasVersion2, HasContentLength {
+                    override fun channel() = value.file.asyncReadOnlyFileChannel()
+                    override val version = LastModifiedVersion(Files.getLastModifiedTime(value.file.toPath()))
+                    override val contentLength = value.file.length()
+                    override val seekable = true
+                })
             }
             is StreamContentProvider -> {
                 sendStream(value.stream())

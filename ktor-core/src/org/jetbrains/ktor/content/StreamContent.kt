@@ -1,6 +1,7 @@
 package org.jetbrains.ktor.content
 
 import java.io.*
+import java.nio.channels.*
 
 interface StreamContent {
     fun stream(out : OutputStream): Unit
@@ -11,4 +12,9 @@ interface StreamContent {
  */
 interface StreamContentProvider {
     fun stream(): InputStream
+}
+
+interface ChannelContentProvider {
+    fun channel(): AsynchronousByteChannel
+    val seekable: Boolean
 }
