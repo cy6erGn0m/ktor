@@ -107,7 +107,7 @@ abstract class BaseApplicationResponse(open val call: ApplicationCall) : Applica
         if (value is HasContentType && !call.request.headers.contains(HttpHeaders.Range)) {
             contentType(value.contentType)
         }
-        if (value is HasContentLength && !call.request.headers.contains(HttpHeaders.Range)) {
+        if (value is HasContentLength && !call.request.headers.contains(HttpHeaders.Range) && !call.request.headers.contains(HttpHeaders.AcceptEncoding)) {
             contentLength(value.contentLength)
         }
     }
