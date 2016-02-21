@@ -53,7 +53,7 @@ abstract class BaseApplicationResponse(open val call: ApplicationCall) : Applica
                 }
             }
             is LocalFileContent -> {
-                call.handleRangeRequest(value, value.file.length(), mergeToSingleRange = false) { ranges ->
+                call.handleRangeRequest(value, value.file.length(), mergeToSingleRange = false, putVersionHeader = false) { ranges ->
                     when {
                         ranges == null -> {
                             // TODO compression settings

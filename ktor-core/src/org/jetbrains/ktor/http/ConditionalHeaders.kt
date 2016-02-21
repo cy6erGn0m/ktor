@@ -82,20 +82,20 @@ fun ApplicationCall.withLastModified(lastModified: LocalDateTime, putHeader: Boo
     return block()
 }
 
-fun ApplicationCall.withIfRange(resource: HasVersion, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
+fun ApplicationCall.withIfRange(resource: HasVersion, putVersionHeader: Boolean = true, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
     return when (resource) {
-        is HasETag -> withIfRange(resource.etag(), block)
-        is HasLastModified -> withIfRange(LocalDateTime.ofInstant(Instant.ofEpochMilli((resource.lastModified)), ZoneId.systemDefault()), block)
+        is HasETag -> withIfRange(resource.etag(), putVersionHeader, block)
+        is HasLastModified -> withIfRange(LocalDateTime.ofInstant(Instant.ofEpochMilli((resource.lastModified)), ZoneId.systemDefault()), putVersionHeader, block)
         else -> throw NoWhenBranchMatchedException("Unsupported resource type ${resource.javaClass}")
     }
 }
 
-fun ApplicationCall.withIfRange(lastModified: Date, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
-    return withIfRange(lastModified.toDateTime().toLocalDateTime(), block)
+fun ApplicationCall.withIfRange(lastModified: Date, putVersionHaader: Boolean = true, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
+    return withIfRange(lastModified.toDateTime().toLocalDateTime(), putVersionHaader, block)
 }
 
-fun ApplicationCall.withIfRange(lastModified: ZonedDateTime, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
-    return withIfRange(lastModified.toLocalDateTime(), block)
+fun ApplicationCall.withIfRange(lastModified: ZonedDateTime, putVersionHaader: Boolean = true, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
+    return withIfRange(lastModified.toLocalDateTime(), putVersionHaader, block)
 }
 
 /**
@@ -107,7 +107,7 @@ fun ApplicationCall.withIfRange(lastModified: ZonedDateTime, block: (RangesSpeci
  *
  *  See https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.27
  */
-fun ApplicationCall.withIfRange(lastModified: LocalDateTime, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
+fun ApplicationCall.withIfRange(lastModified: LocalDateTime, putHeader: Boolean = true, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
     val normalized = lastModified.withNano(0)
     val range = request.ranges()
     val ifRange = request.header(HttpHeaders.IfRange)?.let { it.fromHttpDateString().toLocalDateTime() }
@@ -125,7 +125,7 @@ fun ApplicationCall.withIfRange(lastModified: LocalDateTime, block: (RangesSpeci
         response.status(HttpStatusCode.OK)
     }
 
-    return withLastModified(lastModified) {
+    return withLastModified(lastModified, putHeader) {
         block(rangeToProcess)
     }
 }
@@ -139,7 +139,7 @@ fun ApplicationCall.withIfRange(lastModified: LocalDateTime, block: (RangesSpeci
  *
  *  See https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.27
  */
-fun ApplicationCall.withIfRange(entity: String, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
+fun ApplicationCall.withIfRange(entity: String, putHeader: Boolean = true, block: (RangesSpecifier?) -> ApplicationCallResult): ApplicationCallResult {
     val range = request.ranges()
     val ifRange = request.header(HttpHeaders.IfRange)?.let { it.parseMatchTag() }
 
@@ -156,7 +156,7 @@ fun ApplicationCall.withIfRange(entity: String, block: (RangesSpecifier?) -> App
         response.status(HttpStatusCode.OK)
     }
 
-    return withETag(entity) {
+    return withETag(entity, putHeader) {
         block(rangeToProcess)
     }
 }
