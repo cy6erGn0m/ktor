@@ -45,7 +45,7 @@ open class ServletApplicationHost() : HttpServlet() {
             val requestResult = application.handle(applicationRequest)
             when (requestResult) {
                 ApplicationCallResult.Handled -> {
-                    applicationRequest.close()
+//                    applicationRequest.close()
                 }
                 ApplicationCallResult.Unhandled -> {
                     response.sendError(HttpServletResponse.SC_NOT_FOUND)
