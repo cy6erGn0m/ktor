@@ -19,13 +19,22 @@ object ConditionalHeadersInterceptor : ApplicationFeature<Unit> {
                     HttpHeaders.IfNoneMatch).any { it in request.headers }) {
 
                 response.interceptSend { obj, next ->
-                    val version = (obj as? HasVersion2)?.version
+                    if (obj is HasVersions) {
+                        for (version in obj.versions) {
+                            val result = when (version) {
+                                is EntityTagVersion -> checkEtag(version.etag)
+                                is LastModifiedVersion -> checkLastModified(version.lastModified)
+                                else -> ConditionalHeaderCheckResult.OK
+                            }
 
-                    when (version) {
-                        is EntityTagVersion -> withETag(version.etag, false) { next(obj) }
-                        is LastModifiedVersion -> withLastModified(version.lastModified, false) { next(obj) }
-                        else -> next(obj)
+                            if (result != ConditionalHeaderCheckResult.OK) {
+                                response.status(result.statusCode)
+                                return@interceptSend ApplicationCallResult.Handled
+                            }
+                        }
                     }
+
+                    next(obj)
                 }
             }
 

@@ -55,9 +55,9 @@ abstract class BaseApplicationResponse(open val call: ApplicationCall) : Applica
                 ApplicationCallResult.Handled // or async?
             }
             is LocalFileContent -> {
-                send(object : ChannelContentProvider, HasVersion2, HasContentLength {
+                send(object : ChannelContentProvider, HasVersions, HasContentLength {
                     override fun channel() = value.file.asyncReadOnlyFileChannel()
-                    override val version = LastModifiedVersion(Files.getLastModifiedTime(value.file.toPath()))
+                    override val versions = listOf(LastModifiedVersion(Files.getLastModifiedTime(value.file.toPath())))
                     override val contentLength = value.file.length()
                     override val seekable = true
                 })

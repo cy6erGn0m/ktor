@@ -49,7 +49,7 @@ class RangeInterceptor : ApplicationFeature<RangeInterceptor.RangesConfig> {
     }
 
     private fun ApplicationCall.processIfRangeHeader(obj: ChannelContentProvider, length: Long, rangeSpecifier: RangesSpecifier, config: RangesConfig, next: (Any) -> ApplicationCallResult): ApplicationCallResult {
-        val version = (obj as? HasVersion2)?.version
+        val version = (obj as? HasVersions)?.version
         val ifRange = request.header(HttpHeaders.IfRange)
 
         val unchanged = ifRange == null || when (version) {
@@ -76,18 +76,21 @@ class RangeInterceptor : ApplicationFeature<RangeInterceptor.RangesConfig> {
         }
 
         val boundary = "ktor-boundary-" + nextNonce()
-        response.status(HttpStatusCode.PartialContent)
         if (merged.size == 1) {
             val single = merged.single()
             response.contentRange(range = merged.single(), fullLength = length)
-            if (single == 0L .. length - 1) {
+            if (single == 0L..length - 1) {
+                response.status(HttpStatusCode.PartialContent)
                 return next(obj)
             }
+        } else if (merged.size != 1 && !obj.seekable) {
+            return next(obj)
         } else {
             attributes.put(CompressionAttributes.preventCompression, true)
             response.contentType(ContentType.MultiPart.ByteRanges.withParameter("boundary", boundary))
         }
 
+        response.status(HttpStatusCode.PartialContent)
         return next(RangeChannelProvider(obj, merged, boundary, contentType))
     }
 
