@@ -34,6 +34,10 @@ class ServletApplicationResponse(override val call: ServletApplicationCall, val 
         ApplicationCallResult.Handled
     }
 
+    override val channel = Interceptable0<AsyncWriteChannel> {
+        ServletAsyncWriteChannel(startAsync(), servletResponse.outputStream)
+    }
+
     override fun sendStream(stream: InputStream) {
         stream {
             if (this is ServletOutputStream) {
@@ -43,33 +47,6 @@ class ServletApplicationResponse(override val call: ServletApplicationCall, val 
                 pump.start()
             } else {
                 stream.use { it.copyTo(this) }
-            }
-        }
-    }
-
-    override fun sendFile(file: File, position: Long, length: Long) {
-        stream {
-            if (this is ServletOutputStream) {
-                val asyncContext = startAsync()
-
-                AsyncChannelPump(
-                        file.asyncReadOnlyFileChannel(position, position + length - 1),
-                        asyncContext,
-                        servletResponse.outputStream,
-                        call.application.config.log).start()
-            } else {
-                file.inputStream().use { it.copyTo(this) }
-            }
-        }
-    }
-
-    override fun sendAsyncChannel(channel: AsynchronousByteChannel) {
-        stream {
-            if (this is ServletOutputStream) {
-                val asyncContext = startAsync()
-                AsyncChannelPump(channel, asyncContext, this, call.application.config.log).start()
-            } else {
-                Channels.newInputStream(channel).copyTo(this)
             }
         }
     }

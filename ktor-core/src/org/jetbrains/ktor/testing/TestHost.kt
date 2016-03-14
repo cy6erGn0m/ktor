@@ -7,6 +7,7 @@ import org.jetbrains.ktor.host.*
 import org.jetbrains.ktor.http.*
 import org.jetbrains.ktor.interception.*
 import org.jetbrains.ktor.logging.*
+import org.jetbrains.ktor.nio.*
 import org.jetbrains.ktor.util.*
 import java.io.*
 import java.util.*
@@ -108,15 +109,14 @@ class TestApplicationRequest() : ApplicationRequest {
 
 class TestApplicationResponse(call: ApplicationCall) : BaseApplicationResponse(call) {
     private var statusCode: HttpStatusCode? = null
+    private val realContent = lazy { ByteArrayAsyncWriteChannel() }
 
     override val status = Interceptable1<HttpStatusCode, Unit> { code -> this.statusCode = code }
     override val stream = Interceptable1<OutputStream.() -> Unit, Unit> { body ->
-        val stream = ByteArrayOutputStream()
-        stream.body()
-        byteContent = stream.toByteArray()
-        content = stream.toString()
-        ApplicationCallResult.Handled
+        AsyncWriteChannelAdapterStream(realContent.value).body()
     }
+
+    override val channel = Interceptable0<AsyncWriteChannel> { realContent.value }
 
     override val headers: ResponseHeaders = object: ResponseHeaders() {
         private val headersMap = HashMap<String, MutableList<String>>()
@@ -131,8 +131,19 @@ class TestApplicationResponse(call: ApplicationCall) : BaseApplicationResponse(c
 
     override fun status(): HttpStatusCode? = statusCode
 
-    var content: String? = null
-    var byteContent: ByteArray? = null
+    val content: String?
+        get() = if (realContent.isInitialized()) {
+            realContent.value.toByteArray().toString(charset(headers[HttpHeaders.ContentType]?.let { ContentType.parse(it).parameter("charset") } ?: "UTF-8"))
+        } else {
+            null
+        }
+
+    val byteContent: ByteArray?
+        get() = if (realContent.isInitialized()) {
+            realContent.value.toByteArray()
+        } else {
+            null
+        }
 }
 
 class TestApplication(config: ApplicationConfig) : Application(config)

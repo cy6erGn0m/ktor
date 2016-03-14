@@ -1,9 +1,9 @@
 package org.jetbrains.ktor.content
 
 import org.jetbrains.ktor.http.*
+import org.jetbrains.ktor.nio.*
 import org.jetbrains.ktor.util.*
 import java.io.*
-import java.nio.channels.*
 import java.time.*
 
 interface StreamContent {
@@ -18,7 +18,8 @@ interface StreamContentProvider {
 }
 
 interface ChannelContentProvider {
-    fun channel(): AsynchronousByteChannel
+    fun channel(): AsyncReadChannel
+    @Deprecated("")
     val seekable: Boolean
 }
 

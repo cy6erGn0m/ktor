@@ -13,6 +13,7 @@ import javax.servlet.*
  *
  * Notice that you should startAsync before use this
  */
+@Deprecated("Use common AsyncPump instead ")
 internal class AsyncChannelPump(val channel: AsynchronousByteChannel, val asyncContext: AsyncContext, val servletOutputStream: ServletOutputStream, val logger: ApplicationLog): Closeable {
     private val bb = ByteBuffer.allocate(4096)
     private var completed = false

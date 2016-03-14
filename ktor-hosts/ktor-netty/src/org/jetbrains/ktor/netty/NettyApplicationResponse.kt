@@ -7,6 +7,7 @@ import org.jetbrains.ktor.application.*
 import org.jetbrains.ktor.host.*
 import org.jetbrains.ktor.http.*
 import org.jetbrains.ktor.interception.*
+import org.jetbrains.ktor.nio.*
 import java.io.*
 import java.nio.channels.*
 
@@ -15,6 +16,13 @@ internal class NettyApplicationResponse(call: ApplicationCall, val request: Http
 
     override val status = Interceptable1<HttpStatusCode, Unit> { status ->
         response.status = HttpResponseStatus(status.value, status.description)
+    }
+
+    override val channel = Interceptable0<AsyncWriteChannel> {
+        setChunked()
+        sendRequestMessage()
+
+        NettyAsyncWriteChannel(request, context)
     }
 
     override val stream = Interceptable1<OutputStream.() -> Unit, Unit> { body ->
@@ -42,16 +50,6 @@ internal class NettyApplicationResponse(call: ApplicationCall, val request: Http
                 writeFile(file, position, length)
             } else {
                 file.inputStream().use { it.copyTo(this) }
-            }
-        }
-    }
-
-    override fun sendAsyncChannel(channel: AsynchronousByteChannel) {
-        stream {
-            if (this is NettyAsyncStream) {
-                writeAsyncChannel(channel)
-            } else {
-                Channels.newInputStream(channel).use { it.copyTo(this) }
             }
         }
     }

@@ -10,6 +10,7 @@ import java.nio.channels.*
 import java.nio.file.*
 
 abstract class BaseApplicationResponse(open val call: ApplicationCall) : ApplicationResponse {
+    protected abstract val channel: Interceptable0<AsyncWriteChannel>
     protected abstract val stream: Interceptable1<OutputStream.() -> Unit, Unit>
     protected abstract val status: Interceptable1<HttpStatusCode, Unit>
 
@@ -70,6 +71,7 @@ abstract class BaseApplicationResponse(open val call: ApplicationCall) : Applica
         }
     }
 
+    @Deprecated("Too bad")
     protected fun sendHeaders(value: Any) {
         if (value is HasETag) {
             etag(value.etag())
@@ -85,18 +87,12 @@ abstract class BaseApplicationResponse(open val call: ApplicationCall) : Applica
         }
     }
 
-    protected open fun sendAsyncChannel(channel: AsynchronousByteChannel) {
-        stream {
-            Channels.newInputStream(channel).use { it.copyTo(this) }
-        }
+    private fun sendAsyncChannel(channel: AsyncReadChannel) {
+        channel.copyToAsync(channel())
     }
 
     protected open fun sendFile(file: File, position: Long, length: Long) {
-        stream {
-            FileChannel.open(file.toPath(), StandardOpenOption.READ).use { fc ->
-                fc.transferTo(position, length, Channels.newChannel(this))
-            }
-        }
+        file.asyncReadOnlyFileChannel(position, position + length - 1).copyToAsync(channel())
     }
 
     protected open fun sendStream(stream: InputStream) {
@@ -115,4 +111,7 @@ abstract class BaseApplicationResponse(open val call: ApplicationCall) : Applica
 
     override fun stream(body: OutputStream.() -> Unit): Unit = stream.execute(body)
     override fun interceptStream(handler: (OutputStream.() -> Unit, (OutputStream.() -> Unit) -> Unit) -> Unit) = stream.intercept(handler)
+
+    override fun channel() = channel.execute()
+    override fun interceptChannel(handler: (() -> AsyncWriteChannel) -> AsyncWriteChannel) = channel.intercept(handler)
 }
