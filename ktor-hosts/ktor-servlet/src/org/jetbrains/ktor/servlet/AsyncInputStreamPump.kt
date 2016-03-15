@@ -10,6 +10,7 @@ import javax.servlet.*
  *
  * This pump does async only for *write* operation but reading from the [stream] is blocking
  */
+@Deprecated("It should be common pump implementation")
 internal class AsyncInputStreamPump(val stream: InputStream, val asyncContext: AsyncContext, val servletOutputStream: ServletOutputStream) {
 
     private val buffer = ByteArray(4096)
