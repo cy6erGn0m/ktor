@@ -23,8 +23,14 @@ class ServletApplicationResponse(override val call: ServletApplicationCall, val 
             servletResponse.addHeader(name, value)
         }
 
-        override fun getHostHeaderNames(): List<String> = servletResponse.headerNames.toList()
-        override fun getHostHeaderValues(name: String): List<String> = servletResponse.getHeaders(name).toList()
+        override fun getHostHeaderNames(): List<String> =
+                if (servletResponse.contentType != null) servletResponse.headerNames.toList() + HttpHeaders.ContentType
+                else servletResponse.headerNames.toList()
+
+        override fun getHostHeaderValues(name: String): List<String> = when (name) {
+            HttpHeaders.ContentType -> servletResponse.contentType?.let { listOf(it) } ?: emptyList()
+            else -> servletResponse.getHeaders(name).toList()
+        }
     }
 
     override fun status(): HttpStatusCode? = _status
