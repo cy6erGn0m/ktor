@@ -2,8 +2,13 @@ package org.jetbrains.ktor.http
 
 import org.jetbrains.ktor.application.*
 import org.jetbrains.ktor.interception.*
+import org.jetbrains.ktor.util.*
 import java.io.*
 import java.util.zip.*
+
+object ComressionAttributes {
+    val ProhibitCompression = AttributeKey<Unit>("prohibit-compression")
+}
 
 data class CompressionOptions(var minSize: Long = 0L,
                               var compressStream: Boolean = true,
@@ -34,7 +39,7 @@ fun <C: ApplicationCall> InterceptApplicationCall<C>.setupCompression(configure:
             val encoder = encoding?.let { encoders[it] }
             if (encoding != null && encoder != null && request.header(HttpHeaders.Range) == null) {
                 response.interceptStream { content, stream ->
-                    if (conditions.all { it(this) }) {
+                    if (conditions.all { it(this) } && ComressionAttributes.ProhibitCompression !in attributes && HttpHeaders.ContentEncoding !in response.headers) {
                         response.headers.append(HttpHeaders.ContentEncoding, encoding)
                         stream {
                             encoder.open(this).apply {
